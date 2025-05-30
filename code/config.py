@@ -20,40 +20,72 @@ def parse_args():
     parser.add_argument("--experiment", type=str, default="conformal_0.5_dist_pixel_100_kernel201")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument('--log_dir', metavar='DIR', default="output")
-    parser.add_argument('--font', type=str, default="none", help="font name")
-    parser.add_argument('--semantic_concept', type=str, help="the semantic concept to insert")
-    parser.add_argument('--word', type=str, default="none", help="the text to work on")
-    parser.add_argument('--prompt_suffix', type=str, default="minimal flat 2d vector. lineal color."
-                                                             " trending on artstation")
-    parser.add_argument('--optimized_letter', type=str, default="none", help="the letter in the word to optimize")
-    parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--use_wandb', type=int, default=0)
-    parser.add_argument('--wandb_user', type=str, default="none")
 
-    cfg = edict()
+    parser.add_argument("--mode", type=str, choices=["word", "svg"], required=True,
+                        help="choose between 'word' or 'svg' mode")
+    
+    # for word mode
+    parser.add_argument("--font", type=str, default="none", help="font name")
+    parser.add_argument("--word", type=str, default="none", help="the text to work on")
+    parser.add_argument("--optimized_letter", type=str, default="none", help="the letter in the word to optimize")
+
+    # for svg mode
+    parser.add_argument("--svg_path", type=str, default="none", help="path to input SVG")
+
+    # shared
+    parser.add_argument("--semantic_concept", type=str, help="the semantic concept to insert")
+    parser.add_argument("--prompt_suffix", type=str, default="minimal flat 2d vector. lineal color."
+                                                             " trending on artstation")
+    parser.add_argument("--batch_size", type=int, default=1)
+    parser.add_argument("--use_wandb", type=int, default=0)
+    parser.add_argument("--wandb_user", type=str, default="none")
+
+    # parser.add_argument('--font', type=str, default="none", help="font name")
+    # parser.add_argument('--semantic_concept', type=str, help="the semantic concept to insert")
+    # parser.add_argument('--word', type=str, default="none", help="the text to work on")
+    # parser.add_argument('--prompt_suffix', type=str, default="minimal flat 2d vector. lineal color."
+    #                                                          " trending on artstation")
+    # parser.add_argument('--optimized_letter', type=str, default="none", help="the letter in the word to optimize")
+    # parser.add_argument('--batch_size', type=int, default=1)
+    # parser.add_argument('--use_wandb', type=int, default=0)
+    # parser.add_argument('--wandb_user', type=str, default="none")
+
     args = parser.parse_args()
     with open('TOKEN', 'r') as f:
         setattr(args, 'token', f.read().replace('\n', ''))
+
+    cfg = edict()
+    cfg.mode = args.mode
     cfg.config = args.config
     cfg.experiment = args.experiment
     cfg.seed = args.seed
-    cfg.font = args.font
     cfg.semantic_concept = args.semantic_concept
-    cfg.word = cfg.semantic_concept if args.word == "none" else args.word
-    if " " in cfg.word:
-      raise ValueError(f'no spaces are allowed')
     cfg.caption = f"a {args.semantic_concept}. {args.prompt_suffix}"
-    cfg.log_dir = f"{args.log_dir}/{args.experiment}_{cfg.word}"
-    if args.optimized_letter in cfg.word:
-        cfg.optimized_letter = args.optimized_letter
-    else:
-      raise ValueError(f'letter should be in word')
     cfg.batch_size = args.batch_size
     cfg.token = args.token
     cfg.use_wandb = args.use_wandb
     cfg.wandb_user = args.wandb_user
-    cfg.letter = f"{args.font}_{args.optimized_letter}_scaled"
-    cfg.target = f"code/data/init/{cfg.letter}"
+    cfg.log_dir = f"{args.log_dir}/{args.experiment}"
+
+    if cfg.mode == 'word':
+        cfg.font = args.font
+        cfg.word = cfg.semantic_concept if args.word == "none" else args.word
+        if " " in cfg.word:
+            raise ValueError("No spaces are allowed in word mode.")
+        cfg.log_dir = f"{args.log_dir}/{args.experiment}_{cfg.word}"
+        if args.optimized_letter not in cfg.word:
+            raise ValueError("The optimized letter must be part of the word.")
+        cfg.optimized_letter = args.optimized_letter
+        cfg.letter = f"{args.font}_{args.optimized_letter}_scaled"
+        cfg.target = f"code/data/init/{cfg.letter}"
+    elif cfg.mode == 'svg':
+        if args.svg_path == "none":
+            raise ValueError("You must specify --svg_path in svg mode.")
+        cfg.svg_path = args.svg_path
+        cfg.word = osp.splitext(osp.basename(cfg.svg_path))[0]
+        cfg.log_dir = f"{args.log_dir}/{args.experiment}_{cfg.word}"
+        cfg.letter = "svg_shape"
+        cfg.target = cfg.svg_path  # the initial image to be deformed
 
     return cfg
 
@@ -78,9 +110,16 @@ def set_config():
     del cfgs
 
     # set experiment dir
-    signature = f"{cfg.letter}_concept_{cfg.semantic_concept}_seed_{cfg.seed}"
-    cfg.experiment_dir = \
-        osp.join(cfg.log_dir, cfg.font, signature)
+    signature = ""
+    if cfg.mode == 'word':
+        signature = f"font_{cfg.letter}_concept_{cfg.semantic_concept}_seed_{cfg.seed}"
+        cfg.experiment_dir = osp.join(cfg.log_dir, cfg.font, signature)
+    elif cfg.mode == 'svg':
+        signature = f"svg_{osp.basename(cfg.svg_path)}_concept_{cfg.semantic_concept}_seed_{cfg.seed}"
+        cfg.experiment_dir = osp.join(cfg.log_dir, "svg", signature)
+    # signature = f"{cfg.letter}_concept_{cfg.semantic_concept}_seed_{cfg.seed}"
+    # cfg.experiment_dir = \
+    #     osp.join(cfg.log_dir, cfg.font, signature)
     configfile = osp.join(cfg.experiment_dir, 'config.yaml')
     print('Config:', cfg)
 
