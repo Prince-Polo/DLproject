@@ -1,0 +1,86 @@
+# 预训练模型
+models/
+
+# === Python 编译文件 ===
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+
+# === Jupyter Notebook Checkpoints ===
+.ipynb_checkpoints/
+
+# === 虚拟环境 ===
+home/
+env/
+venv/
+.venv/
+
+# === 系统文件 ===
+.DS_Store
+Thumbs.db
+
+# === 运行日志/调试输出 ===
+*.log
+*.out
+*.err
+
+# === 数据和模型文件 ===
+*.pt
+*.pth
+*.ckpt
+*.npz
+*.npy
+
+# === 渲染输出图像 / 视频帧 ===
+output/
+outputs/
+renders/
+frames/
+results/
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.mp4
+*.gif
+
+# === 临时实验结果 ===
+tmp/
+temp/
+__results__/
+
+# === diffvg 生成的中间文件 ===
+*.svg.json
+*.json
+
+# === vscode 或 pycharm 配置 ===
+.vscode/
+.idea/
+
+# === Jupyter 输出缓存（可选） ===
+*.nbconvert.ipynb
+
+# === 安装依赖的记录文件（可手动添加） ===
+*.egg-info/
+pip-wheel-metadata/
+
+# === 项目配置 ===
+.env
+.env.*
+
+# === 构建产物（如果打包发布） ===
+build/
+dist/
+*.egg
+*.whl
+
+# === 安装 diffvg 可能生成的本地编译文件 ===
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# === 安装 clip/其他下载模型缓存（可选） ===
+~/.cache/
