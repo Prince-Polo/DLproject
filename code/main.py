@@ -15,6 +15,7 @@ from utils import (
     save_image,
     preprocess_word,
     preprocess_svg,
+    preprocess_img,
     learning_rate_decay,
     combine_word,
     create_video)
@@ -56,6 +57,10 @@ if __name__ == "__main__":
         preprocess_word(cfg.font, cfg.word, cfg.optimized_letter, cfg.level_of_cc)
     elif cfg.mode == "svg":
         preprocess_svg(cfg.svg_path)
+    elif cfg.mode == "jpg":
+        preprocess_img(cfg.jpg_path, cfg.mode)
+    elif cfg.mode == "png":
+        preprocess_img(cfg.png_path, cfg.mode)
     else:
         raise ValueError(f"Unknown mode: {cfg.mode}")
 
@@ -100,7 +105,7 @@ if __name__ == "__main__":
     if cfg.loss.conformal.use_conformal_loss:
         if cfg.mode == "word":
             conformal_loss = ConformalLoss_word(parameters, device, cfg.optimized_letter, shape_groups)
-        elif cfg.mode == "svg":
+        elif cfg.mode == "svg" or cfg.mode == "jpg" or cfg.mode == "png":
             conformal_loss = ConformalLoss_svg(parameters, device, shape_groups)
 
     lr_lambda = lambda step: learning_rate_decay(step, cfg.lr.lr_init, cfg.lr.lr_final, num_iter,

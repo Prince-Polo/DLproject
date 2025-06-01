@@ -7,6 +7,7 @@ import pydiffvg
 import save_svg
 import cv2
 from ttf import font_string_to_svgs, normalize_letter_size
+from img_process import svg_to_jpg, bitmap_to_final_svg
 import torch
 import numpy as np
 
@@ -92,12 +93,15 @@ def preprocess_svg(input_svg_path):
     参数：
         input_svg_path: str - 输入 SVG 文件路径（也是 cfg.target）
     """
+    final_svg_path = f"code/data/temp/{osp.basename(input_svg_path).replace('.svg', '_final.svg')}"
+    svg_to_jpg(input_svg_path, f"code/data/temp/{osp.basename(input_svg_path).replace('.svg', '.jpg')}", scale=1.0)
+    bitmap_to_final_svg(f"code/data/temp/{osp.basename(input_svg_path).replace('.svg', '.jpg')}", final_svg_path)
     # ========= Step 1: 合法性检查 ========= #
-    if not os.path.exists(input_svg_path):
-        raise FileNotFoundError(f"SVG file not found: {input_svg_path}")
+    if not os.path.exists(final_svg_path):
+        raise FileNotFoundError(f"SVG file not found: {final_svg_path}")
     
     try:
-        tree = ET.parse(input_svg_path)
+        tree = ET.parse(final_svg_path)
         root = tree.getroot()
         if not root.tag.endswith("svg"):
             raise ValueError(f"The root element is not <svg>: found <{root.tag}>")
@@ -106,13 +110,13 @@ def preprocess_svg(input_svg_path):
     except Exception as e:
         raise ValueError(f"Invalid SVG structure: {e}")
     
-    print(f"[Preprocess] Valid SVG file: {input_svg_path}")
+    print(f"[Preprocess] Valid SVG file: {final_svg_path}")
 
     # ========= Step 2: 加载 SVG 为 scene ========= #
     target_h_letter = 600
     target_canvas_width, target_canvas_height = 600, 600
 
-    canvas_width, canvas_height, shapes, shape_groups = pydiffvg.svg_to_scene(input_svg_path)
+    canvas_width, canvas_height, shapes, shape_groups = pydiffvg.svg_to_scene(final_svg_path)
 
     letter_w = canvas_width
     letter_h = canvas_height
@@ -150,6 +154,83 @@ def preprocess_svg(input_svg_path):
     save_svg.save_svg(output_path, target_canvas_width, target_canvas_height, shapes, shape_groups)
 
     print(f"[Done Preprocess SVG] Saved to {output_path}")
+
+def preprocess_img(input_img_path, mode):
+    """
+    对输入的图像进行预处理：合法性检查 + 图像标准化 + 居中缩放 + 输出 _scaled.svg 文件。
+
+    参数：
+        input_img_path: str - 输入图像文件路径
+    """
+    if mode == "jpg":
+        final_svg_path = f"code/data/temp/{osp.basename(input_img_path).replace('.jpg', '_final.svg')}"
+    elif mode == "png":
+        final_svg_path = f"code/data/temp/{osp.basename(input_img_path).replace('.png', '_final.svg')}"
+    else:
+        raise ValueError(f"Unsupported mode: {mode}. Use 'jpg' or 'png'.")
+    bitmap_to_final_svg(input_img_path, final_svg_path)
+    
+# ========= Step 1: 合法性检查 ========= #
+    if not os.path.exists(final_svg_path):
+        raise FileNotFoundError(f"SVG file not found: {final_svg_path}")
+    
+    try:
+        tree = ET.parse(final_svg_path)
+        root = tree.getroot()
+        if not root.tag.endswith("svg"):
+            raise ValueError(f"The root element is not <svg>: found <{root.tag}>")
+        if not any(child.tag.endswith(('path', 'circle', 'rect', 'line', 'polygon', 'polyline')) for child in root.iter()):
+            raise ValueError("SVG does not contain recognizable vector shapes")
+    except Exception as e:
+        raise ValueError(f"Invalid SVG structure: {e}")
+    
+    print(f"[Preprocess] Valid SVG file: {final_svg_path}")
+
+    # ========= Step 2: 加载 SVG 为 scene ========= #
+    target_h_letter = 900
+    target_canvas_width, target_canvas_height = 600, 600
+
+    canvas_width, canvas_height, shapes, shape_groups = pydiffvg.svg_to_scene(final_svg_path)
+
+    letter_w = canvas_width
+    letter_h = canvas_height
+
+    # ========= Step 3: 计算缩放比例 ========= #
+    if letter_w > letter_h:
+        scale = target_h_letter / letter_w
+    else:
+        scale = target_h_letter / letter_h
+
+    new_w = int(letter_w * scale)
+    new_h = int(letter_h * scale)
+
+    scale_w = new_w / letter_w
+    scale_h = new_h / letter_h
+
+    # ========= Step 4: 缩放点坐标 ========= #
+    for p in shapes:
+        p.points[:, 0] *= scale_w
+        p.points[:, 1] *= scale_h
+        p.points[:, 1] += target_h_letter  # 先向下平移避免负值
+
+    # ========= Step 5: 居中对齐画布 ========= #
+    w_min = min(torch.min(p.points[:, 0]) for p in shapes)
+    w_max = max(torch.max(p.points[:, 0]) for p in shapes)
+    h_min = min(torch.min(p.points[:, 1]) for p in shapes)
+    h_max = max(torch.max(p.points[:, 1]) for p in shapes)
+
+    for p in shapes:
+        p.points[:, 0] += target_canvas_width / 2 - (w_min + (w_max - w_min) / 2)
+        p.points[:, 1] += target_canvas_height / 2 - (h_min + (h_max - h_min) / 2)
+
+    # ========= Step 6: 保存标准化后的 SVG ========= #
+    if mode == "jpg":
+        output_path = input_img_path.replace(".jpg", "_scaled.svg")
+    elif mode == "png":
+        output_path = input_img_path.replace(".png", "_scaled.svg")
+    save_svg.save_svg(output_path, target_canvas_width, target_canvas_height, shapes, shape_groups)
+
+    print(f"[Done Preprocess SVG] Saved to {output_path}")  
 
 
 def get_data_augs(cut_size):

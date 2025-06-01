@@ -21,8 +21,8 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument('--log_dir', metavar='DIR', default="output")
 
-    parser.add_argument("--mode", type=str, choices=["word", "svg"], required=True,
-                        help="choose between 'word' or 'svg' mode")
+    parser.add_argument("--mode", type=str, choices=["word", "svg", "jpg", "png"], required=True,
+                        help="choose among word, svg, jpg, or png modes")
     
     # for word mode
     parser.add_argument("--font", type=str, default="none", help="font name")
@@ -31,6 +31,11 @@ def parse_args():
 
     # for svg mode
     parser.add_argument("--svg_path", type=str, default="none", help="path to input SVG")
+
+    # for jpg mode
+    parser.add_argument("--jpg_path", type=str, default="none", help="path to input JPG")
+    # for png mode
+    parser.add_argument("--png_path", type=str, default="none", help="path to input PNG")
 
     # shared
     parser.add_argument("--semantic_concept", type=str, help="the semantic concept to insert")
@@ -80,12 +85,30 @@ def parse_args():
         cfg.target = f"code/data/init/{cfg.letter}"
     elif cfg.mode == 'svg':
         if args.svg_path == "none":
-            raise ValueError("You must specify --svg_path in svg mode.")
+            raise ValueError("You must specify the path.")
         cfg.svg_path = f"{args.svg_path}.svg"
         cfg.word = osp.splitext(osp.basename(cfg.svg_path))[0]
         cfg.log_dir = f"{args.log_dir}/{args.experiment}_{cfg.word}"
         cfg.letter = "svg_shape"
         cfg.target = f"{args.svg_path}_scaled"  # the initial image to be deformed
+    elif cfg.mode == 'jpg':
+        if args.jpg_path == "none":
+            raise ValueError("You must specify the path.")
+        cfg.jpg_path = f"{args.jpg_path}.jpg"
+        cfg.word = osp.splitext(osp.basename(cfg.jpg_path))[0]
+        cfg.log_dir = f"{args.log_dir}/{args.experiment}_{cfg.word}"
+        cfg.letter = "jpg_shape"
+        cfg.target = f"{args.jpg_path}_scaled"  # the initial image to be deformed
+    elif cfg.mode == 'png':
+        if args.png_path == "none":
+            raise ValueError("You must specify the path.")
+        cfg.png_path = f"{args.png_path}.png"
+        cfg.word = osp.splitext(osp.basename(cfg.png_path))[0]
+        cfg.log_dir = f"{args.log_dir}/{args.experiment}_{cfg.word}"
+        cfg.letter = "png_shape"
+        cfg.target = f"{args.png_path}_scaled"  # the initial image to be deformed
+    else:
+        raise ValueError(f"Unknown mode: {cfg.mode}")
 
     return cfg
 
@@ -118,6 +141,12 @@ def set_config():
     elif cfg.mode == 'svg':
         signature = f"svg_{osp.basename(cfg.svg_path)}_concept_{cfg.semantic_concept}_seed_{cfg.seed}"
         cfg.experiment_dir = osp.join(cfg.log_dir, "svg", signature)
+    elif cfg.mode == 'jpg':
+        signature = f"jpg_{osp.basename(cfg.jpg_path)}_concept_{cfg.semantic_concept}_seed_{cfg.seed}"
+        cfg.experiment_dir = osp.join(cfg.log_dir, "jpg", signature)
+    elif cfg.mode == 'png':
+        signature = f"png_{osp.basename(cfg.png_path)}_concept_{cfg.semantic_concept}_seed_{cfg.seed}"
+        cfg.experiment_dir = osp.join(cfg.log_dir, "png", signature)
     # signature = f"{cfg.letter}_concept_{cfg.semantic_concept}_seed_{cfg.seed}"
     # cfg.experiment_dir = \
     #     osp.join(cfg.log_dir, cfg.font, signature)

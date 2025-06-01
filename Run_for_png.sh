@@ -13,11 +13,11 @@ WANDB_USER="none"
 EXPERIMENT=conformal_0.5_dist_pixel_100_kernel201
 
 
-MODE="svg"
-CONCEPT="ELEPHANT" # Change this to the desired concept
-INPUT_PATH="code/data/svg/pig-svgrepo-com" # Change this to the desired SVG file path
+MODE="png"
+CONCEPT="PIG" # Change this to the desired concept
+INPUT_PATH="code/data/png/pig" # Change this to the desired SVG file path
 SEED=0
 
-echo "Deforming SVG ${INPUT_PATH} with concept ${CONCEPT} with seed ${SEED}"
+echo "Deforming JPG ${INPUT_PATH} with concept ${CONCEPT} with seed ${SEED}"
 ARGS="--mode $MODE --experiment $EXPERIMENT --seed $SEED --use_wandb ${USE_WANDB} --wandb_user ${WANDB_USER}"
-CUDA_VISIBLE_DEVICES=0 python code/main.py $ARGS --semantic_concept "${CONCEPT}" --svg_path "${INPUT_PATH}"
+CUDA_VISIBLE_DEVICES=0 python code/main.py $ARGS --semantic_concept "${CONCEPT}" --png_path "${INPUT_PATH}"
