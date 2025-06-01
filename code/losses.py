@@ -111,7 +111,7 @@ class ToneLoss(nn.Module):
         return self.mse_loss(self.init_blurred.detach(), blurred_cur) * self.get_scheduler(step)
             
 
-class ConformalLoss:
+class ConformalLoss_word:
     def __init__(self, parameters: EasyDict, device: torch.device, target_letter: str, shape_groups):
         self.parameters = parameters
         self.target_letter = target_letter
@@ -171,6 +171,78 @@ class ConformalLoss:
         angles = self.get_angles(points)
         for i in range(len(self.faces)):
             loss_angles += (nnf.mse_loss(angles[i], self.angles[i]))
+        return loss_angles
+
+class ConformalLoss_svg:
+    def __init__(self, parameters: EasyDict, device: torch.device, shape_groups):
+        self.parameters = parameters
+        self.shape_groups = shape_groups
+        self.device = device
+        self.faces = self.init_faces()
+        self.faces_roll_a = [torch.roll(f, 1, 1) for f in self.faces]
+
+        with torch.no_grad():
+            self.angles = []
+            self.reset()
+
+    def get_angles(self, points: torch.Tensor) -> torch.Tensor:
+        angles_ = []
+        for i in range(len(self.faces)):
+            triangles = points[self.faces[i]]
+            triangles_roll_a = points[self.faces_roll_a[i]]
+            edges = triangles_roll_a - triangles
+            length = edges.norm(dim=-1)
+            edges = edges / (length + 1e-1)[:, :, None]
+            edges_roll = torch.roll(edges, 1, 1)
+            cosine = torch.einsum('ned,ned->ne', edges, edges_roll)
+            angles = torch.arccos(cosine)
+            angles_.append(angles)
+        return angles_
+
+    def reset(self):
+        points = torch.cat([p.clone().detach() for p in self.parameters.point])
+        self.angles = self.get_angles(points)
+
+    def init_faces(self) -> torch.Tensor:
+        faces_all = []
+        for i, group in enumerate(self.shape_groups):
+            try:
+                shape_ids = group.shape_ids
+                start_ind, end_ind = shape_ids[0], shape_ids[-1]
+                shapes_per_group = len(shape_ids)
+
+                # 获取每个子 path 的点
+                points_np_all = [self.parameters.point[i].clone().detach().cpu().numpy()
+                                for i in range(len(self.parameters.point))]
+
+                outer = points_np_all[start_ind]
+                holes = points_np_all[start_ind + 1:end_ind + 1] if shapes_per_group > 1 else []
+
+                poly = Polygon(outer, holes=holes).buffer(0)
+
+                # 将当前 shape group 内所有点提取出来
+                group_points = np.concatenate([points_np_all[idx] for idx in shape_ids])
+
+                tri = Delaunay(group_points)
+                is_inside = np.array([
+                    poly.contains(Point(group_points[face].mean(0)))
+                    for face in tri.simplices
+                ], dtype=bool)
+
+                faces = torch.from_numpy(tri.simplices[is_inside]).to(self.device, dtype=torch.int64)
+                faces_all.append(faces)
+
+            except Exception as e:
+                print(f"Warning: failed to build polygon for shape_group[{i}]: {e}")
+        return faces_all
+
+    def __call__(self) -> torch.Tensor:
+        if not self.faces:
+            return torch.tensor(0.0, device=self.device)
+
+        points = torch.cat(self.parameters.point)
+        angles = self.get_angles(points)
+        loss_angles = sum(nnf.mse_loss(angles[i], self.angles[i]) for i in range(len(self.faces)))
         return loss_angles
 
 

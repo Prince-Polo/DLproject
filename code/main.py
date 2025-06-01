@@ -7,13 +7,14 @@ import torch
 from torch.optim.lr_scheduler import LambdaLR
 import pydiffvg
 import save_svg
-from losses import SDSLoss, ToneLoss, ConformalLoss
+from losses import SDSLoss, ToneLoss, ConformalLoss_word, ConformalLoss_svg
 from config import set_config
 from utils import (
     check_and_create_dir,
     get_data_augs,
     save_image,
-    preprocess,
+    preprocess_word,
+    preprocess_svg,
     learning_rate_decay,
     combine_word,
     create_video)
@@ -51,7 +52,12 @@ if __name__ == "__main__":
     device = pydiffvg.get_device()
 
     print("preprocessing")
-    preprocess(cfg.font, cfg.word, cfg.optimized_letter, cfg.level_of_cc)
+    if cfg.mode == "word":
+        preprocess_word(cfg.font, cfg.word, cfg.optimized_letter, cfg.level_of_cc)
+    elif cfg.mode == "svg":
+        preprocess_svg(cfg.svg_path)
+    else:
+        raise ValueError(f"Unknown mode: {cfg.mode}")
 
     if cfg.loss.use_sds_loss:
         sds_loss = SDSLoss(cfg, device)
@@ -92,7 +98,10 @@ if __name__ == "__main__":
     optim = torch.optim.Adam(pg, betas=(0.9, 0.9), eps=1e-6)
 
     if cfg.loss.conformal.use_conformal_loss:
-        conformal_loss = ConformalLoss(parameters, device, cfg.optimized_letter, shape_groups)
+        if cfg.mode == "word":
+            conformal_loss = ConformalLoss_word(parameters, device, cfg.optimized_letter, shape_groups)
+        elif cfg.mode == "svg":
+            conformal_loss = ConformalLoss_svg(parameters, device, shape_groups)
 
     lr_lambda = lambda step: learning_rate_decay(step, cfg.lr.lr_init, cfg.lr.lr_final, num_iter,
                                                  lr_delay_steps=cfg.lr.lr_delay_steps,
@@ -161,7 +170,8 @@ if __name__ == "__main__":
     save_svg.save_svg(
         filename, w, h, shapes, shape_groups)
 
-    combine_word(cfg.word, cfg.optimized_letter, cfg.font, cfg.experiment_dir)
+    if cfg.mode == "word":
+        combine_word(cfg.word, cfg.optimized_letter, cfg.font, cfg.experiment_dir)
 
     if cfg.save.image:
         filename = os.path.join(

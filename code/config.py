@@ -81,16 +81,17 @@ def parse_args():
     elif cfg.mode == 'svg':
         if args.svg_path == "none":
             raise ValueError("You must specify --svg_path in svg mode.")
-        cfg.svg_path = args.svg_path
+        cfg.svg_path = f"{args.svg_path}.svg"
         cfg.word = osp.splitext(osp.basename(cfg.svg_path))[0]
         cfg.log_dir = f"{args.log_dir}/{args.experiment}_{cfg.word}"
         cfg.letter = "svg_shape"
-        cfg.target = cfg.svg_path  # the initial image to be deformed
+        cfg.target = f"{args.svg_path}_scaled"  # the initial image to be deformed
 
     return cfg
 
 
 def set_config():
+    print("Setting up configuration...")
 
     cfg_arg = parse_args()
     with open(cfg_arg.config, 'r') as f:

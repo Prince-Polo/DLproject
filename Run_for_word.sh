@@ -8,12 +8,12 @@ WANDB_USER="none"
 EXPERIMENT=conformal_0.5_dist_pixel_100_kernel201
 
 MODE="word"
-CONCEPT="Shirt"
-WORD="CLOTHES"
-fonts=(Noteworthy-Bold)
+CONCEPT="POKEMON"
+WORD="POKEMON"
+fonts=(KaushanScript-Regular)
 for j in "${fonts[@]}"
 do
-    letter_=("O")
+    letter_=("K")
     SEED=0
     for i in "${letter_[@]}"
     do
@@ -23,4 +23,3 @@ do
         CUDA_VISIBLE_DEVICES=0 python code/main.py $ARGS --semantic_concept "${CONCEPT}" --word "${WORD}"
     done
 done
-
