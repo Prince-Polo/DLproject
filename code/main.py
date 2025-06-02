@@ -9,6 +9,7 @@ import pydiffvg
 import save_svg
 from losses import SDSLoss, ToneLoss, ConformalLoss_word, ConformalLoss_svg
 from config import set_config
+from torchvision.transforms.functional import to_pil_image
 from utils import (
     check_and_create_dir,
     get_data_augs,
@@ -21,6 +22,7 @@ from utils import (
     create_video)
 import wandb
 import warnings
+from color import paint
 warnings.filterwarnings("ignore")
 
 pydiffvg.set_print_timing(False)
@@ -192,6 +194,26 @@ if __name__ == "__main__":
     if cfg.save.video:
         print("saving video")
         create_video(cfg.num_iter, cfg.experiment_dir, cfg.save.video_frame_freq)
+
+    if cfg.color:
+        print("painting")
+        condition_img_pil = to_pil_image((img * 255).byte().permute(2, 0, 1).cpu())
+        if cfg.color_prompt!= None:
+            print('test1')
+            paint(
+                save_pth=os.path.join(cfg.experiment_dir, "output-png", "output.png"),
+                prompt1=cfg.color_prompt,
+                condition_img=condition_img_pil
+            )
+        else:
+            print('test2')
+            paint(
+                save_pth=os.path.join(cfg.experiment_dir, "output-png", "output.png"),
+                prompt1="paint the "+cfg.semantic_concept,
+                condition_img=condition_img_pil
+            )
+        if cfg.mode == "word":
+            combine_word(cfg.word, cfg.optimized_letter, cfg.font, cfg.experiment_dir)
 
     if cfg.use_wandb:
         wandb.finish()

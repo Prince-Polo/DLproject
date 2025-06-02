@@ -44,7 +44,8 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--use_wandb", type=int, default=0)
     parser.add_argument("--wandb_user", type=str, default="none")
-
+    parser.add_argument("--color",type=bool, default=False, help="whether to use color or not")
+    parser.add_argument("--color_prompt", type=str, default=None, help="the color prompt to use")
     # parser.add_argument('--font', type=str, default="none", help="font name")
     # parser.add_argument('--semantic_concept', type=str, help="the semantic concept to insert")
     # parser.add_argument('--word', type=str, default="none", help="the text to work on")
@@ -71,6 +72,8 @@ def parse_args():
     cfg.use_wandb = args.use_wandb
     cfg.wandb_user = args.wandb_user
     cfg.log_dir = f"{args.log_dir}/{args.experiment}"
+    cfg.color = args.color
+    cfg.color_prompt = args.color_prompt
 
     if cfg.mode == 'word':
         cfg.font = args.font

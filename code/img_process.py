@@ -127,7 +127,12 @@ def bitmap_to_final_svg(input_bitmap_path: str, output_svg_path: str, epsilon: f
     )
 
     blur = cv2.GaussianBlur(img, (3, 3), 0)
-    gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+    if len(blur.shape) == 3:
+        gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = blur  # 已经是灰度图了
+
+    # gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
     _, bw = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
     contours, _ = cv2.findContours(bw, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     rings = [np.array(c).reshape([-1, 2]) for c in contours]

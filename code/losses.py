@@ -8,7 +8,8 @@ from easydict import EasyDict
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
-from diffusers import StableDiffusionPipeline
+from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
+from huggingface_hub import model_info
 
 class SDSLoss(nn.Module):
     def __init__(self, cfg, device):
@@ -16,7 +17,15 @@ class SDSLoss(nn.Module):
         self.cfg = cfg
         self.device = device
         self.pipe = StableDiffusionPipeline.from_pretrained(cfg.diffusion.model,
-                                                       torch_dtype=torch.float16, use_auth_token=cfg.token, cache_dir="models")
+                                                       torch_dtype=torch.float16, use_auth_token=cfg.token)
+        ## lora
+        # model_path = "sayakpaul/sd-model-finetuned-lora-t4"
+        # info = model_info(model_path)
+        # model_base = info.cardData["base_model"]
+        # self.pipe = StableDiffusionPipeline.from_pretrained(model_base, torch_dtype=torch.float16)
+        # self.pipe.scheduler = DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config)
+        # lora_path = "/root/autodl-tmp/git_resp/DLproject/lora/Pecha_Swords_LORA_V1.2.safetensors"
+        # self.pipe.load_lora_weights(lora_path)
         self.pipe = self.pipe.to(self.device)
         # default scheduler: PNDMScheduler(beta_start=0.00085, beta_end=0.012,
         # beta_schedule="scaled_linear", num_train_timesteps=1000)
@@ -117,6 +126,7 @@ class ConformalLoss_word:
         self.target_letter = target_letter
         self.shape_groups = shape_groups
         self.faces = self.init_faces(device)
+        self.device = device
         self.faces_roll_a = [torch.roll(self.faces[i], 1, 1) for i in range(len(self.faces))]
 
         with torch.no_grad():
@@ -145,7 +155,7 @@ class ConformalLoss_word:
                 return letter_inds[0], letter_inds[-1], len(letter_inds)
 
     def reset(self):
-        points = torch.cat([point.clone().detach() for point in self.parameters.point])
+        points = torch.cat([point.clone().detach() for point in self.parameters.point]).to(self.device)
         self.angles = self.get_angles(points)
 
     def init_faces(self, device: torch.device) -> torch.tensor:
@@ -161,13 +171,13 @@ class ConformalLoss_word:
             poly = poly.buffer(0)
             points_np = np.concatenate(points_np)
             faces = Delaunay(points_np).simplices
-            is_intersect = np.array([poly.contains(Point(points_np[face].mean(0))) for face in faces], dtype=np.bool)
+            is_intersect = np.array([poly.contains(Point(points_np[face].mean(0))) for face in faces], dtype=bool)
             faces_.append(torch.from_numpy(faces[is_intersect]).to(device, dtype=torch.int64))
         return faces_
 
     def __call__(self) -> torch.Tensor:
         loss_angles = 0
-        points = torch.cat(self.parameters.point)
+        points = torch.cat(self.parameters.point).to(self.device)
         angles = self.get_angles(points)
         for i in range(len(self.faces)):
             loss_angles += (nnf.mse_loss(angles[i], self.angles[i]))
@@ -200,7 +210,7 @@ class ConformalLoss_svg:
         return angles_
 
     def reset(self):
-        points = torch.cat([p.clone().detach() for p in self.parameters.point])
+        points = torch.cat([p.clone().detach() for p in self.parameters.point]).to(self.device)
         self.angles = self.get_angles(points)
 
     def init_faces(self) -> torch.Tensor:
@@ -240,11 +250,10 @@ class ConformalLoss_svg:
         if not self.faces:
             return torch.tensor(0.0, device=self.device)
 
-        points = torch.cat(self.parameters.point)
+        points = torch.cat(self.parameters.point).to(self.device)
         angles = self.get_angles(points)
         loss_angles = sum(nnf.mse_loss(angles[i], self.angles[i]) for i in range(len(self.faces)))
         return loss_angles
-
 
 
 

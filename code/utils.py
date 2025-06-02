@@ -351,6 +351,37 @@ def combine_word(word, letter, font, experiment_dir):
     img = img[:, :, :3]
     save_image(img, f"{experiment_dir}/{font}_{word}_{letter}.png")
 
+from PIL import Image
+import os
+
+# def combine_colored_png(word, letter, font, experiment_dir, letter_bbox_dict):
+   
+#     word_png_path = f"./code/data/init/{font}_{word}_scaled.png"
+#     optimized_letter_path = os.path.join(experiment_dir, "output-colored-png", "output.png")
+#     output_path = os.path.join(experiment_dir, f"{font}_{word}_{letter}_colored.png")
+
+#     # Open images
+#     word_img = Image.open(word_png_path).convert("RGBA")
+#     optimized_letter_img = Image.open(optimized_letter_path).convert("RGBA")
+
+#     # Find where to insert the optimized letter (assumes 1 occurrence for now)
+#     insert_idx = word.index(letter)
+#     if insert_idx not in letter_bbox_dict:
+#         raise ValueError(f"Letter index {insert_idx} not in provided bbox dict.")
+
+#     x, y, w, h = letter_bbox_dict[insert_idx]
+
+#     # Resize optimized letter to fit bbox
+#     optimized_letter_resized = optimized_letter_img.resize((w, h), Image.ANTIALIAS)
+
+#     # Paste onto original word image
+#     word_img.paste(optimized_letter_resized, (x, y), optimized_letter_resized)
+
+#     # Save result
+#     word_img.save(output_path)
+#     print(f"Saved combined image to {output_path}")
+
+
 
 def create_video(num_iter, experiment_dir, video_frame_freq):
     img_array = []

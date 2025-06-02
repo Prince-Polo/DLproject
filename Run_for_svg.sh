@@ -14,8 +14,8 @@ EXPERIMENT=conformal_0.5_dist_pixel_100_kernel201
 
 
 MODE="svg"
-CONCEPT="ELEPHANT" # Change this to the desired concept
-INPUT_PATH="code/data/svg/pig-svgrepo-com" # Change this to the desired SVG file path
+CONCEPT="DOG" # Change this to the desired concept
+INPUT_PATH="/root/autodl-tmp/git_resp/DLproject/code/data/svg/svgviewer-output" # Change this to the desired SVG file path
 SEED=0
 
 echo "Deforming SVG ${INPUT_PATH} with concept ${CONCEPT} with seed ${SEED}"
