@@ -26,6 +26,10 @@ class SDSLoss(nn.Module):
         # self.pipe.scheduler = DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config)
         # lora_path = "/root/autodl-tmp/git_resp/DLproject/lora/Pecha_Swords_LORA_V1.2.safetensors"
         # self.pipe.load_lora_weights(lora_path)
+
+        # lora_path = "/root/autodl-tmp/git_resp/DLproject/lora/pytorch_lora_weights1.safetensors"
+        # self.pipe.load_lora_weights(lora_path)
+
         self.pipe = self.pipe.to(self.device)
         # default scheduler: PNDMScheduler(beta_start=0.00085, beta_end=0.012,
         # beta_schedule="scaled_linear", num_train_timesteps=1000)
