@@ -4,11 +4,6 @@
 
 set -e
 
-# <<< 加入这一段激活 conda 环境 >>>
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate word
-# <<< 以上是关键！ >>>
-
 USE_WANDB=0 # CHANGE IF YOU WANT WANDB
 WANDB_USER="none"
 
