@@ -9,7 +9,6 @@ import numpy as np
 from diffusers import StableDiffusionXLAdapterPipeline, T2IAdapter, EulerAncestralDiscreteScheduler, AutoencoderKL
 from controlnet_aux.canny import CannyDetector
 # from config import Config
-# 1. 加载边缘图（或者你可以自己绘图/线稿）
 from PIL import ImageOps
 
 generator= torch.Generator("cuda").manual_seed(0)
@@ -22,15 +21,13 @@ def get_canny_thin(img):
 
     edges = cv2.Canny(image_gray, 100, 200)
 
-    # 细化操作（需安装 opencv-contrib-python）
     try:
         edges_thin = cv2.ximgproc.thinning(edges)
     except AttributeError:
         raise RuntimeError("请安装 opencv-contrib-python: pip install opencv-contrib-python")
 
     edges_rgb = cv2.cvtColor(edges_thin, cv2.COLOR_GRAY2RGB)
-    # 将边缘图转换为 PIL 图像
-    Image.fromarray(edges_rgb).save("canny_thin.png")  # 保存细化后的边缘图像以供参考
+    Image.fromarray(edges_rgb).save("canny_thin.png")
     return Image.fromarray(edges_rgb)
 
 def clean_alpha(image, threshold=200):
@@ -38,11 +35,9 @@ def clean_alpha(image, threshold=200):
     if image.mode != "RGBA":
         image = image.convert("RGBA")
     r, g, b, a = image.split()
-    
-    # 把 alpha 做阈值处理（例如大于 200 的设为 255，其他设为 0）
+
     a = a.point(lambda p: 255 if p > threshold else 0)
     
-    # 合成新图像（边缘直接硬处理）
     cleaned = Image.merge("RGBA", (r, g, b, a))
     return cleaned
 
@@ -66,14 +61,14 @@ def get_canny(image_path):
 #     guidance_scale=7.5,
 #     adapter_conditioning_scale=1.0,
 #     callback=save_intermediate_images,
-#     callback_steps=1,  # 每一步都调用
+#     callback_steps=1, 
 # ).images[0]
 negative_prompt1 = "monochrome, grayscale, blurry"
 
 def paint(save_pth,prompt1,condition_img,negative_prompt=negative_prompt1):
     print(prompt1)
     print(negative_prompt)
-    condition_img.save("condition_image.png")  # 保存输入图像以供参考
+    condition_img.save("condition_image.png") 
     image = pipe(
     prompt=prompt1,
     negative_prompt=negative_prompt,
@@ -83,13 +78,10 @@ def paint(save_pth,prompt1,condition_img,negative_prompt=negative_prompt1):
     adapter_conditioning_scale=1.0,
     generator=generator,
     ).images[0]
-# image=remove(image)  # 移除背景
-    image = remove(image)  # 移除背景
+    image = remove(image)  
     image = clean_alpha(image)
-    # 7. 保存结果
-    # image.save(save_pth)
     white_bg = Image.new("RGB", image.size, (255, 255, 255))
-# 将透明图像粘贴到白色背景上（使用 alpha 通道作为掩码）
+
     white_bg.paste(image, mask=image.split()[3]) 
     print("save_pth_chk", save_pth)
     white_bg.save(save_pth.replace("output.png", "output_white.png"))
