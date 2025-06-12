@@ -1,6 +1,6 @@
 # MetaShape: Concept-Driven Shape Morphing
-## env setup
-- first create an env
+## Environment Setup
+- First create an environment
 ```bash
 conda create --name morphing python=3.8.18 -y
 conda activate morphing
@@ -15,7 +15,7 @@ pip install wandb
 pip install diffusers
 pip install transformers scipy ftfy accelerate
 ```
-- second clone diffvg
+- Second clone diffvg
 ```bash
 git clone https://github.com/BachiLi/diffvg.git
 cd diffvg
@@ -23,7 +23,7 @@ git submodule update --init --recursive
 python setup.py install
 ```
 
-## experiment
+## Experiment
 ```bash
 git clone https://github.com/Prince-Polo/DLproject
 cd DLproject
