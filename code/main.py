@@ -19,7 +19,8 @@ from utils import (
     preprocess_img,
     learning_rate_decay,
     combine_word,
-    create_video)
+    create_video,
+    replace_letter_with_png)
 import wandb
 import warnings
 from color import paint
@@ -209,11 +210,12 @@ if __name__ == "__main__":
             print('test2')
             paint(
                 save_pth=os.path.join(cfg.experiment_dir, "output-png", "output.png"),
-                prompt1="paint the "+cfg.semantic_concept,
+                prompt1="draw the "+cfg.semantic_concept,
                 condition_img=condition_img_pil
             )
         if cfg.mode == "word":
-            combine_word(cfg.word, cfg.optimized_letter, cfg.font, cfg.experiment_dir)
-
+            replace_letter_with_png(
+                cfg.word, cfg.optimized_letter, cfg.font, cfg.experiment_dir,
+                os.path.join(cfg.experiment_dir, "output-png", "output_white.png"))
     if cfg.use_wandb:
         wandb.finish()

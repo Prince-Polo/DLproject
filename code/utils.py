@@ -10,7 +10,11 @@ from ttf import font_string_to_svgs, normalize_letter_size
 from img_process import svg_to_jpg, bitmap_to_final_svg
 import torch
 import numpy as np
-
+import os
+import cv2
+import numpy as np
+import svgwrite
+from PIL import Image
 
 def edict_2_dict(x):
     if isinstance(x, dict):
@@ -351,36 +355,72 @@ def combine_word(word, letter, font, experiment_dir):
     img = img[:, :, :3]
     save_image(img, f"{experiment_dir}/{font}_{word}_{letter}.png")
 
-from PIL import Image
-import os
 
-# def combine_colored_png(word, letter, font, experiment_dir, letter_bbox_dict):
-   
-#     word_png_path = f"./code/data/init/{font}_{word}_scaled.png"
-#     optimized_letter_path = os.path.join(experiment_dir, "output-colored-png", "output.png")
-#     output_path = os.path.join(experiment_dir, f"{font}_{word}_{letter}_colored.png")
+def replace_letter_with_png(
+    word, letter, font, experiment_dir, replacement_png_path
+):
+    word_svg_scaled = f"./code/data/init/{font}_{word}_scaled.svg"
+    canvas_width, canvas_height, shapes_word, shape_groups_word = pydiffvg.svg_to_scene(word_svg_scaled)
+    
+    letter_ids = []
+    for l in letter:
+        letter_ids += get_letter_ids(l, word, shape_groups_word)
+    
+    # 获取该字母位置范围（包围盒）
+    w_min = min([torch.min(shapes_word[ids].points[:, 0]) for ids in letter_ids])
+    w_max = max([torch.max(shapes_word[ids].points[:, 0]) for ids in letter_ids])
+    h_min = min([torch.min(shapes_word[ids].points[:, 1]) for ids in letter_ids])
+    h_max = max([torch.max(shapes_word[ids].points[:, 1]) for ids in letter_ids])
+    
+    # 渲染整个单词图像（不修改 letter）
+    render = pydiffvg.RenderFunction.apply
+    scene_args = pydiffvg.RenderFunction.serialize_scene(canvas_width, canvas_height, shapes_word, shape_groups_word)
+    img = render(canvas_width, canvas_height, 2, 2, 0, None, *scene_args)
+    img = img[:, :, 3:4] * img[:, :, :3] + \
+               torch.ones(img.shape[0], img.shape[1], 3, device="cuda:0") * (1 - img[:, :, 3:4])
+    img = img[:, :, :3].cpu().numpy()
 
-#     # Open images
-#     word_img = Image.open(word_png_path).convert("RGBA")
-#     optimized_letter_img = Image.open(optimized_letter_path).convert("RGBA")
+    # 转换为 PIL 图像
+    background = Image.fromarray((img * 255).astype("uint8"))
+    
+    # 打开 PNG 替换图案
+    replacement_png = Image.open(replacement_png_path).convert("RGBA")
 
-#     # Find where to insert the optimized letter (assumes 1 occurrence for now)
-#     insert_idx = word.index(letter)
-#     if insert_idx not in letter_bbox_dict:
-#         raise ValueError(f"Letter index {insert_idx} not in provided bbox dict.")
+    if replacement_png.mode != "RGBA":
+        replacement_png = replacement_png.convert("RGBA")
 
-#     x, y, w, h = letter_bbox_dict[insert_idx]
+    # 拆分通道
+    img_np = np.array(replacement_png)
+    bg_threshold = 240  # 白色背景的阈值
+    r, g, b, a = img_np[:, :, 0], img_np[:, :, 1], img_np[:, :, 2], img_np[:, :, 3]
 
-#     # Resize optimized letter to fit bbox
-#     optimized_letter_resized = optimized_letter_img.resize((w, h), Image.ANTIALIAS)
+    # 背景遮罩：白色 或 透明区域
+    bg_mask = ((r > bg_threshold) & (g > bg_threshold) & (b > bg_threshold)) | (a == 0)
 
-#     # Paste onto original word image
-#     word_img.paste(optimized_letter_resized, (x, y), optimized_letter_resized)
+    # 前景遮罩：非背景
+    fg_mask = ~bg_mask
 
-#     # Save result
-#     word_img.save(output_path)
-#     print(f"Saved combined image to {output_path}")
+    # 找到前景的边界框
+    coords = np.argwhere(fg_mask)
 
+    y0, x0 = coords.min(axis=0)
+    y1, x1 = coords.max(axis=0) + 1  # 因为裁剪是 [start, end)
+
+    # 裁剪图像
+    replacement_png = replacement_png.crop((x0, y0, x1, y1))
+    # 缩放 PNG 到目标字母大小
+    target_width = int(w_max - w_min)
+    target_height = int(h_max - h_min)
+    replacement_png = replacement_png.resize((target_width, target_height), Image.LANCZOS)
+    
+    # 粘贴到背景图上
+    paste_position = (int(w_min.item()), int(h_min.item()))
+    background.paste(replacement_png, paste_position, mask=replacement_png)
+
+    # 保存
+    output_path = os.path.join(experiment_dir, f"{font}_{word}_{letter}_replaced.png")
+    background.save(output_path)
+    print(f"Saved PNG with replacement at {output_path}")
 
 
 def create_video(num_iter, experiment_dir, video_frame_freq):

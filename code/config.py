@@ -174,3 +174,68 @@ def set_config():
         assert False
 
     return cfg
+
+
+
+# utils_config.py
+from types import SimpleNamespace
+import yaml
+import os.path as osp
+
+def generate_cfg_dict(args_dict):
+    args = SimpleNamespace(**args_dict)
+    cfg = {}
+
+    cfg["mode"] = args.mode
+    cfg["config"] = args.config
+    cfg["experiment"] = args.experiment
+    cfg["seed"] = args.seed
+    cfg["semantic_concept"] = args.semantic_concept
+    cfg["caption"] = f"a {args.semantic_concept}. {args.prompt_suffix}"
+    cfg["batch_size"] = args.batch_size
+    cfg["token"] = args.token
+    cfg["use_wandb"] = args.use_wandb
+    cfg["wandb_user"] = args.wandb_user
+    cfg["log_dir"] = f"{args.log_dir}/{args.experiment}"
+    cfg["color"] = args.color
+    cfg["color_prompt"] = args.color_prompt
+
+    if args.mode == 'word':
+        cfg["font"] = args.font
+        cfg["word"] = args.semantic_concept if args.word == "none" else args.word
+        if " " in cfg["word"]:
+            raise ValueError("No spaces are allowed in word mode.")
+        cfg["log_dir"] = f"{args.log_dir}/{args.experiment}_{cfg['word']}"
+        if args.optimized_letter not in cfg["word"]:
+            raise ValueError("The optimized letter must be part of the word.")
+        cfg["optimized_letter"] = args.optimized_letter
+        cfg["letter"] = f"{args.font}_{args.optimized_letter}_scaled"
+        cfg["target"] = f"code/data/init/{cfg['letter']}"
+    elif args.mode == 'svg':
+        if args.svg_path == "none":
+            raise ValueError("You must specify the path.")
+        cfg["svg_path"] = f"{args.svg_path}.svg"
+        cfg["word"] = osp.splitext(osp.basename(cfg["svg_path"]))[0]
+        cfg["log_dir"] = f"{args.log_dir}/{args.experiment}_{cfg['word']}"
+        cfg["letter"] = "svg_shape"
+        cfg["target"] = f"{args.svg_path}_scaled"
+    elif args.mode == 'jpg':
+        if args.jpg_path == "none":
+            raise ValueError("You must specify the path.")
+        cfg["jpg_path"] = f"{args.jpg_path}.jpg"
+        cfg["word"] = osp.splitext(osp.basename(cfg["jpg_path"]))[0]
+        cfg["log_dir"] = f"{args.log_dir}/{args.experiment}_{cfg['word']}"
+        cfg["letter"] = "jpg_shape"
+        cfg["target"] = f"{args.jpg_path}_scaled"
+    elif args.mode == 'png':
+        if args.png_path == "none":
+            raise ValueError("You must specify the path.")
+        cfg["png_path"] = f"{args.png_path}.png"
+        cfg["word"] = osp.splitext(osp.basename(cfg["png_path"]))[0]
+        cfg["log_dir"] = f"{args.log_dir}/{args.experiment}_{cfg['word']}"
+        cfg["letter"] = "png_shape"
+        cfg["target"] = f"{args.png_path}_scaled"
+    else:
+        raise ValueError(f"Unknown mode: {args.mode}")
+
+    return cfg

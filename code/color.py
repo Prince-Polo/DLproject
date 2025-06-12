@@ -12,6 +12,27 @@ from controlnet_aux.canny import CannyDetector
 # 1. 加载边缘图（或者你可以自己绘图/线稿）
 from PIL import ImageOps
 
+generator= torch.Generator("cuda").manual_seed(0)
+
+def get_canny_thin(img):
+    # image = cv2.imread(image_path)
+    img = np.array(img.convert("RGB"))[:, :, ::-1]
+    image = cv2.resize(img, (1024, 1024))
+    image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    edges = cv2.Canny(image_gray, 100, 200)
+
+    # 细化操作（需安装 opencv-contrib-python）
+    try:
+        edges_thin = cv2.ximgproc.thinning(edges)
+    except AttributeError:
+        raise RuntimeError("请安装 opencv-contrib-python: pip install opencv-contrib-python")
+
+    edges_rgb = cv2.cvtColor(edges_thin, cv2.COLOR_GRAY2RGB)
+    # 将边缘图转换为 PIL 图像
+    Image.fromarray(edges_rgb).save("canny_thin.png")  # 保存细化后的边缘图像以供参考
+    return Image.fromarray(edges_rgb)
+
 def clean_alpha(image, threshold=200):
     """将 RGBA 图像中的半透明边缘处理掉，避免阴影"""
     if image.mode != "RGBA":
@@ -56,10 +77,11 @@ def paint(save_pth,prompt1,condition_img,negative_prompt=negative_prompt1):
     image = pipe(
     prompt=prompt1,
     negative_prompt=negative_prompt,
-    image=canny_detector(condition_img, detect_resolution=384, image_resolution=1024),
-    num_inference_steps=30,
+    image=get_canny_thin(condition_img),
+    num_inference_steps=200,
     guidance_scale=7.5,
     adapter_conditioning_scale=1.0,
+    generator=generator,
     ).images[0]
 # image=remove(image)  # 移除背景
     image = remove(image)  # 移除背景
@@ -69,7 +91,8 @@ def paint(save_pth,prompt1,condition_img,negative_prompt=negative_prompt1):
     white_bg = Image.new("RGB", image.size, (255, 255, 255))
 # 将透明图像粘贴到白色背景上（使用 alpha 通道作为掩码）
     white_bg.paste(image, mask=image.split()[3]) 
-    white_bg.save(save_pth.replace(".png", "_white.png"))
+    print("save_pth_chk", save_pth)
+    white_bg.save(save_pth.replace("output.png", "output_white.png"))
     return 0
 
 adapter = T2IAdapter.from_pretrained(
